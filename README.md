@@ -1,2 +1,4 @@
-# ktds5_02
-[KT ds] MS AI 개발역량 향상과정 5차수 프로젝트 
+MS AI 5차수 교육 - 고객운영팀 김성환
+프로젝트 git
+
+https://appktds502.azurewebsites.net/

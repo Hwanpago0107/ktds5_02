@@ -1,0 +1,335 @@
+[
+  {
+    "id": "KB-001",
+    "title": "KT PORT_OUT PRE_AUTH BF1099 (기타오류)",
+    "operator": [
+      "KT"
+    ],
+    "direction": "PORT_OUT",
+    "process": "PRE_AUTH",
+    "error_code": "BF1099",
+    "symptoms": "10분 단위 집계 상승, 기타오류, 사전동의 실패",
+    "root_cause": "KT 사전동의 게이트웨이 지연/오류, MVNO↔MNP 허브 타임아웃, 고객 동의 채널 응답 지연",
+    "initial_actions": "KT 상태대시보드에서 사전동의 API 오류율/지연 확인; 최근 배포/방화벽 변경 이력 점검; 사업자/지역 쏠림 여부 확인",
+    "diag_steps": "Kibana: service=preauth AND operator=KT AND code=BF1099; 재현 트래픽 1건으로 핸드셰이크 확인",
+    "escalation": "15분 이상 지속 & 건수>5 → 대외연동팀 알림, KT NOC 문의(TKT-MNP-01)",
+    "example_msgs": "10분 단위 포트아웃 번호이동 사전동의 BF1099 기타오류 건수입니다. KT상태 확인해주세요."
+  },
+  {
+    "id": "KB-002",
+    "title": "MVNO PRE_AUTH 사업자 확인(일반)",
+    "operator": [
+      "MVNO"
+    ],
+    "direction": "N/A",
+    "process": "PRE_AUTH",
+    "error_code": "ANY",
+    "symptoms": "사업자 확인 요청, 번호이동 사전동의 대상 사업자 존재",
+    "root_cause": "대상 번호의 소유 사업자 식별 불일치, MNP 캐시 지연/동기화 실패",
+    "initial_actions": "MNP 캐시 조회 후 원 소유사 재확인; 사업자 맵핑 테이블 최신화 여부 점검",
+    "diag_steps": "SQL: SELECT * FROM mnp_cache WHERE msisdn=:num;",
+    "escalation": "30분 내 동일 패턴 3건 이상 → 번호이동운영팀",
+    "example_msgs": "건수:1, 독자/MVNO 사업자 번호이동 사전동의 장애사업자 존재합니다. 사업자 확인해주세요."
+  },
+  {
+    "id": "KB-003",
+    "title": "SKT PORT_OUT PRE_AUTH 타임아웃 증가",
+    "operator": [
+      "SKT"
+    ],
+    "direction": "PORT_OUT",
+    "process": "PRE_AUTH",
+    "error_code": "TIMEOUT",
+    "symptoms": "사전동의 API 타임아웃 증가, 지연 시간 급상승",
+    "root_cause": "사전동의 게이트웨이 스로틀링, 백엔드 큐 적체",
+    "initial_actions": "API 게이트웨이 에러율/대기열 점검; 최근 스로틀 정책 변경 여부 확인",
+    "diag_steps": "APM 대시보드: preauth latency p95 추이 확인",
+    "escalation": "p95 > 3s 10분 지속 → 대외연동팀"
+  },
+  {
+    "id": "KB-004",
+    "title": "LGU+ PORT_IN AUTH OTP 전송 지연",
+    "operator": [
+      "LGU+"
+    ],
+    "direction": "PORT_IN",
+    "process": "AUTH",
+    "error_code": "OTP_DELAY",
+    "symptoms": "인증(OTP) 전송 지연/미수신",
+    "root_cause": "SMS 게이트웨이 혼선, 발신 번호 차단",
+    "initial_actions": "SMS 발송 성공률/게이트웨이 상태 확인; 발신 번호 필터링/차단 여부 확인",
+    "diag_steps": "SMS GW 로그: msg_status, carrier_delivery_code 확인",
+    "escalation": "성공률<95% 15분 지속 → 메시징플랫폼팀"
+  },
+  {
+    "id": "KB-005",
+    "title": "KT PORT_OUT AUTH 인증 서명 검증 실패",
+    "operator": [
+      "KT"
+    ],
+    "direction": "PORT_OUT",
+    "process": "AUTH",
+    "error_code": "SIG_FAIL",
+    "symptoms": "인증 토큰 서명 검증 실패",
+    "root_cause": "서버/클라이언트 키 불일치, 시계 드리프트",
+    "initial_actions": "키 롤오버 이력 확인; NTP 동기화 상태 점검; 실패 토큰 샘플 복호화 검토",
+    "diag_steps": "Auth 서버 로그: signature_invalid count",
+    "escalation": "5분간 10건↑ → 보안/인증팀"
+  },
+  {
+    "id": "KB-006",
+    "title": "MVNO PORT_OUT PRE_AUTH 사업자 맵핑 누락",
+    "operator": [
+      "MVNO"
+    ],
+    "direction": "PORT_OUT",
+    "process": "PRE_AUTH",
+    "error_code": "MAP_MISS",
+    "symptoms": "사업자 미매핑으로 사전동의 실패",
+    "root_cause": "신규 사업자 코드 반영 누락",
+    "initial_actions": "맵핑 테이블 최신화; 신규 코드 릴리즈 상태 점검",
+    "diag_steps": "Config repo diff 확인",
+    "escalation": "즉시 핫픽스 배포 검토"
+  },
+  {
+    "id": "KB-007",
+    "title": "SKT PORT_IN PRE_AUTH BF2001 (요청 형식 오류)",
+    "operator": [
+      "SKT"
+    ],
+    "direction": "PORT_IN",
+    "process": "PRE_AUTH",
+    "error_code": "BF2001",
+    "symptoms": "요청 스키마 불일치, 필수 필드 누락",
+    "root_cause": "포맷 변경 반영 누락, 버전 호환성 문제",
+    "initial_actions": "스키마 검증 활성화; 최근 배포에서 필드 매핑 확인",
+    "diag_steps": "Gateway schema validation error 로그 조회",
+    "escalation": "동일 코드 20건/10분 → API개발팀"
+  },
+  {
+    "id": "KB-008",
+    "title": "LGU+ PORT_OUT PRE_AUTH 기타오류 다발",
+    "operator": [
+      "LGU+"
+    ],
+    "direction": "PORT_OUT",
+    "process": "PRE_AUTH",
+    "error_code": "OTHER",
+    "symptoms": "기타오류 코드 다발, 간헐 실패",
+    "root_cause": "외부 연동지연, 간헐 네트워크 패킷 드랍",
+    "initial_actions": "네트워크 지연/패킷 손실 모니터링; 재시도 정책 적정성 점검",
+    "diag_steps": "NPM: packet loss, jitter 지표 확인",
+    "escalation": "지속시 네트워크팀 협조"
+  },
+  {
+    "id": "KB-009",
+    "title": "KT PORT_IN AUTH OTP 검증 실패 급증",
+    "operator": [
+      "KT"
+    ],
+    "direction": "PORT_IN",
+    "process": "AUTH",
+    "error_code": "OTP_FAIL",
+    "symptoms": "OTP 입력 오류/만료 증가",
+    "root_cause": "유효시간 과도하게 짧음, 사용자 안내 부족",
+    "initial_actions": "OTP 만료시간/재전송 정책 점검; 안내문구 개선",
+    "diag_steps": "Auth 로그: otp_invalid, otp_expired 카운트",
+    "escalation": "실패율>10% 10분 지속 → 고객채널팀"
+  },
+  {
+    "id": "KB-010",
+    "title": "MVNO PORT_IN PRE_AUTH 허브 연결 장애",
+    "operator": [
+      "MVNO"
+    ],
+    "direction": "PORT_IN",
+    "process": "PRE_AUTH",
+    "error_code": "HUB_DOWN",
+    "symptoms": "MNP 허브 연결 실패/재시도 반복",
+    "root_cause": "허브 점검/장애, 방화벽 정책 변경",
+    "initial_actions": "허브 상태 공지 확인; 방화벽/라우팅 변경 이력 점검",
+    "diag_steps": "Telnet/Health check endpoint 확인",
+    "escalation": "연결 Fail 5분 지속 → 대외연동팀"
+  },
+  {
+    "id": "KB-011",
+    "title": "SKT PORT_OUT AUTH 콜백 지연",
+    "operator": [
+      "SKT"
+    ],
+    "direction": "PORT_OUT",
+    "process": "AUTH",
+    "error_code": "CALLBACK_SLOW",
+    "symptoms": "콜백 수신 지연으로 플로우 중단",
+    "root_cause": "콜백 큐 적체, 서드파티 지연",
+    "initial_actions": "콜백 큐 소비량/지연 확인; 타임아웃 상향 검토",
+    "diag_steps": "큐 모니터링: lag, inflight metrics",
+    "escalation": "p95>5s 10분 지속 → 통합플랫폼팀"
+  },
+  {
+    "id": "KB-012",
+    "title": "LGU+ PORT_IN PRE_AUTH NP3002 (가입자 불일치)",
+    "operator": [
+      "LGU+"
+    ],
+    "direction": "PORT_IN",
+    "process": "PRE_AUTH",
+    "error_code": "NP3002",
+    "symptoms": "가입자 정보 불일치로 사전동의 실패",
+    "root_cause": "주민/생년월일/명의자 오입력 또는 DB 불일치",
+    "initial_actions": "고객정보 재확인; 유효성 검증 로직 점검",
+    "diag_steps": "CI/DI 대조 로그 확인",
+    "escalation": "동일 코드 10건/10분 → 고객정보팀"
+  },
+  {
+    "id": "KB-013",
+    "title": "KT ACTIVATION 신규개통 대량 실패 (1시간 내 1000건)",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "ACTIVATION",
+    "error_code": "ACT_FAIL",
+    "symptoms": "신규개통 처리 실패 대량 발생, 1시간 내 1000건",
+    "root_cause": "개통 브로커/ESB 지연 또는 다운, 번호자원/USIM 상태 불일치",
+    "initial_actions": "개통 브로커 상태/큐 적체 확인; ESB/AP 서버 헬스체크; 번호자원/USIM 상태 동기화 점검",
+    "diag_steps": "APM: activation p95/p99; 큐 lag; 실패 샘플 5건 end-to-end 추적",
+    "escalation": "30분 지속 & 500건↑ → 통합플랫폼팀/개통운영팀 동시 알림",
+    "example_msgs": "건수: 1000, KT 사업자 1시간 내 신규개통 처리 실패 오류"
+  },
+  {
+    "id": "KB-014",
+    "title": "KT PROVISIONING HLR/HSS 반영 지연",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "PROVISIONING",
+    "error_code": "HLR_DELAY",
+    "symptoms": "개통 완료 후 음성/데이터 불가, HLR/HSS 반영 지연",
+    "root_cause": "HLR/HSS 동기화 지연, 인터페이스 타임아웃",
+    "initial_actions": "HLR/HSS 큐 상태 확인; 재전송/재처리 트리거 점검",
+    "diag_steps": "프로비저닝 로그: pending->applied 소요시간 분포",
+    "escalation": "p95 반영시간>5분 20분 지속 → 코어망팀"
+  },
+  {
+    "id": "KB-015",
+    "title": "KT CONTRACT 모바일AP 계약 생성 실패",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "CONTRACT",
+    "error_code": "CTR_CREATE_FAIL",
+    "symptoms": "모바일AP 계약 생성 에러, 계약ID 미발급",
+    "root_cause": "계약 마스터 스키마 변경 반영 누락, 필수 필드 검증 실패",
+    "initial_actions": "계약 API 스키마/필수 필드 검증; 최근 배포/마이그레이션 확인",
+    "diag_steps": "계약 API 에러코드별 분포/샘플 페이로드 확인",
+    "escalation": "5분 100건↑ → 계약개발팀"
+  },
+  {
+    "id": "KB-016",
+    "title": "KT BUNDLE 결합상품 연동 실패 (고객정보 불일치)",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "BUNDLE",
+    "error_code": "BND_LINK_FAIL",
+    "symptoms": "결합상품 연동 실패, 가족/인터넷 회선 매칭 불가",
+    "root_cause": "CI/DI 불일치, 고객정보 싱크 지연",
+    "initial_actions": "CI/DI 재검증; 고객정보 동기화 배치 상태 점검",
+    "diag_steps": "고객 마스터 join 검증 쿼리",
+    "escalation": "동일고객 재시도 3회↑ → 고객정보팀"
+  },
+  {
+    "id": "KB-017",
+    "title": "KT RATEPLAN 요금제 적용 실패",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "RATEPLAN",
+    "error_code": "PLAN_APPLY_FAIL",
+    "symptoms": "개통/변경 후 요금제 미반영",
+    "root_cause": "요금제 코드 미배포, 룰엔진 조건 불일치",
+    "initial_actions": "요금제 코드/버전 확인; 룰엔진 로그에서 reject 사유 점검",
+    "diag_steps": "Billing/prod catalog diff 체크",
+    "escalation": "10분 50건↑ → 과금/카탈로그팀"
+  },
+  {
+    "id": "KB-018",
+    "title": "KT CANCELLATION 개통취소 처리 지연",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "CANCELLATION",
+    "error_code": "CXL_DELAY",
+    "symptoms": "개통취소 요청 후 상태 전이 지연, 이중 과금 위험",
+    "root_cause": "역플로우 의존 시스템 지연, 보상 트랜잭션 실패",
+    "initial_actions": "역플로우 큐/보상작업 상태 확인; 타임아웃 상향 검토",
+    "diag_steps": "SAGA 보상 단계 실패 로그 조회",
+    "escalation": "p95>3분 15분 지속 → 정산/과금팀"
+  },
+  {
+    "id": "KB-019",
+    "title": "KT USIM ICCID/IMSI 매칭 오류",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "USIM",
+    "error_code": "USIM_MISMATCH",
+    "symptoms": "ICCID-IMSI 매칭 오류로 개통 실패",
+    "root_cause": "USIM 재고정보 불일치, 바코드 스캔 오류",
+    "initial_actions": "재고DB와 물리USIM 매칭 재검증; 오류 스캔 로그 확인",
+    "diag_steps": "ICCID↔IMSI 매핑 테이블 점검",
+    "escalation": "동일센터 10건/10분 → 물류/재고팀"
+  },
+  {
+    "id": "KB-020",
+    "title": "KT IDENTITY 본인인증 실패 급증",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "IDENTITY",
+    "error_code": "KYC_FAIL",
+    "symptoms": "본인인증(KYC) 실패율 급증",
+    "root_cause": "외부 인증사 지연/점검, 스로틀링",
+    "initial_actions": "외부 인증 게이트웨이 상태 확인; 타임아웃/재시도 정책 점검",
+    "diag_steps": "인증 실패 사유코드별 분포",
+    "escalation": "실패율>15% 10분 지속 → 대외연동팀"
+  },
+  {
+    "id": "KB-021",
+    "title": "KT CHANGE_NUMBER 번호 변경 처리 실패",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "CHANGE_NUMBER",
+    "error_code": "NUM_CHANGE_FAIL",
+    "symptoms": "번호 변경 요청 실패, 자원할당 오류",
+    "root_cause": "번호자원 잠금 경합, 재고 소진",
+    "initial_actions": "번호자원 잠금 상태/재고 확인; 재시도 백오프 적용",
+    "diag_steps": "자원 할당 로그: lock wait, contention",
+    "escalation": "동일센터 20건/10분 → 번호자원팀"
+  },
+  {
+    "id": "KB-022",
+    "title": "KT ADDON 부가서비스 가입 반영 실패",
+    "operator": [
+      "KT"
+    ],
+    "direction": "N/A",
+    "process": "ADDON",
+    "error_code": "ADDON_FAIL",
+    "symptoms": "부가서비스 가입/해지 반영 실패",
+    "root_cause": "부가서비스 시스템 지연, 카탈로그-프로비 불일치",
+    "initial_actions": "부가서비스 엔진 상태; 카탈로그-프로비 매핑 점검",
+    "diag_steps": "addon apply 실패 로그/코드별 현황",
+    "escalation": "10분 100건↑ → 부가서비스팀"
+  }
+]
